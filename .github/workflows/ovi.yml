@@ -70,7 +70,7 @@ jobs:
 
     steps:
       - name: Checkout Main
-        uses: actions/checkout@v4.1.1
+        uses: actions/checkout@v4
         with:
           path: main
           submodules: recursive
@@ -88,7 +88,7 @@ jobs:
           fi
 
       - name: Install Dependencies
-        run: brew install make ldid
+        run: brew install make ldid wget
 
       - name: Set PATH
         run: echo "$(brew --prefix make)/libexec/gnubin" >> $GITHUB_PATH
@@ -105,18 +105,20 @@ jobs:
 
       - name: Setup Theos
         if: steps.theos.outputs.cache-hit != 'true'
-        uses: actions/checkout@v4.1.7
+        uses: actions/checkout@v4
         with:
           repository: theos/theos
           ref: 67db2ab8d950910161730de77c322658ea3e6b44
           path: ${{ github.workspace }}/theos
           submodules: recursive
 
-      - name: Download tvOS SDK
+      - name: Download and extract AppleTVOS12.4.sdk
         if: steps.theos.outputs.cache-hit != 'true'
+        env:
+          THEOS: ${{ github.workspace }}/theos
         run: |
           echo "Downloading SDK..."
-          curl -L -o AppleTVOS12.4.sdk.tar.xz https://github.com/theos/sdks/releases/download/SDK-Release-1/AppleTVOS12.4.sdk.tar.xz
+          wget --content-disposition https://github.com/theos/sdks/releases/download/master-146e41f/AppleTVOS12.4.sdk.tar.xz
 
           echo "Creating SDK directory: $THEOS/sdks"
           mkdir -p "$THEOS/sdks"
@@ -126,8 +128,6 @@ jobs:
 
           echo "Final SDK contents:"
           ls -la "$THEOS/sdks"
-        env:
-          THEOS: ${{ github.workspace }}/theos
 
       - name: Install cyan
         run: pipx install --force https://github.com/asdfzxcvbn/pyzule-rw/archive/main.zip
@@ -188,8 +188,11 @@ jobs:
           cyan -i youtube.ipa -o YouTubePlus_tvOS_${{ inputs.tweak_version }}.ipa -uwef $tweaks -n "${{ inputs.display_name }}" -b ${{ inputs.bundle_id }}
 
       - name: Upload to GitHub Releases
-        uses: softprops/action-gh-release@v2.0.1
+        uses: softprops/action-gh-release@v2
         with:
           name: YouTubePlus tvOS v${{ inputs.tweak_version }} (${{ github.run_number }})
           files: YouTubePlus_tvOS_${{ inputs.tweak_version }}.ipa
           draft: true
+
+      - name: Output Release URL
+        run: echo "::notice::Release available atreleases"
