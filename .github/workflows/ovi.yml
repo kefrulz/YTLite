@@ -15,7 +15,7 @@ on:
         required: true
         default: false
 
-      enable_ryd:xa
+      enable_ryd:
         description: "Integrate Return YouTube Dislikes"
         type: boolean
         required: true
@@ -112,14 +112,22 @@ jobs:
           path: ${{ github.workspace }}/theos
           submodules: recursive
 
-      - name: Download tvOS SDK
+      - name: Download and extract AppleTVOS12.4.sdk
         if: steps.theos.outputs.cache-hit != 'true'
-        run: |
-          curl -LO https://github.com/theos/sdks/releases/download/SDK-Release-1/AppleTVOS12.4.sdk.tar.xz
-          mkdir -p $THEOS/sdks
-          tar -xf AppleTVOS12.4.sdk.tar.xz -C $THEOS/sdks
         env:
           THEOS: ${{ github.workspace }}/theos
+        run: |
+          echo "Downloading SDK..."
+          curl -L -o AppleTVOS12.4.sdk.tar.xz https://github.com/theos/sdks/releases/download/SDK-Release-1/AppleTVOS12.4.sdk.tar.xz
+
+          echo "Creating SDK directory: $THEOS/sdks"
+          mkdir -p "$THEOS/sdks"
+
+          echo "Extracting SDK..."
+          tar -xvf AppleTVOS12.4.sdk.tar.xz -C "$THEOS/sdks"
+
+          echo "Final SDK contents:"
+          ls -la "$THEOS/sdks"
 
       - name: Install cyan
         run: pipx install --force https://github.com/asdfzxcvbn/pyzule-rw/archive/main.zip
@@ -184,3 +192,6 @@ jobs:
           name: YouTubePlus tvOS v${{ inputs.tweak_version }} (${{ github.run_number }})
           files: YouTubePlus_tvOS_${{ inputs.tweak_version }}.ipa
           draft: true
+
+      - name: Output Release URL
+        run: echo "::notice::Release available at: https://github.com/${{ github.repository }}/releases"
