@@ -82,7 +82,6 @@ jobs:
         run: |
           curl -L -r 0-1023 -o sample.part "${{ inputs.ipa_url }}" > /dev/null 2>&1
           file_type=$(file --mime-type -b sample.part)
-
           if [[ "$file_type" != "application/x-ios-app" && "$file_type" != "application/zip" ]]; then
             echo "::error::Validation failed: The file is not a valid IPA file. Detected type: $file_type."
             exit 1
@@ -147,29 +146,34 @@ jobs:
             [demc]="https://github.com/therealFoxster/DontEatMyContent.git"
           )
 
-          for tweak in youpip ytuhd ryd ygs yq ytvo demc; do
-            if [[ "${{ inputs.enable_${tweak} }}" == "true" ]]; then
-              echo "Cloning and building $tweak"
-              git clone --quiet --depth=1 --recurse-submodules "${repos[$tweak]}" "$tweak"
-              cd "$tweak"
-              make clean package DEBUG=0 FINALPACKAGE=1 || echo "⚠️ $tweak may not be tvOS compatible"
-              mv packages/*.deb ../${tweak}.deb || true
-              cd ..
-            fi
-          done
+          clone_and_build() {
+            local name=$1
+            local url=${repos[$name]}
+            echo "Cloning and building $name"
+            git clone --quiet --depth=1 --recurse-submodules "$url" "$name"
+            cd "$name"
+            make clean package DEBUG=0 FINALPACKAGE=1 || echo "⚠️ $name may not be tvOS compatible"
+            mv packages/*.deb ../${name}.deb || true
+            cd ..
+          }
+
+          [[ "${{ inputs.enable_youpip }}" == "true" ]] && clone_and_build "youpip"
+          [[ "${{ inputs.enable_ytuhd }}" == "true" ]] && clone_and_build "ytuhd"
+          [[ "${{ inputs.enable_ryd }}" == "true" ]] && clone_and_build "ryd"
+          [[ "${{ inputs.enable_demc }}" == "true" ]] && clone_and_build "demc"
+          [[ "${{ inputs.enable_yq }}" == "true" ]] && clone_and_build "yq"
+          [[ "${{ inputs.enable_yq }}" == "true" ]] && clone_and_build "ytvo"
         env:
           THEOS: ${{ github.workspace }}/theos
 
       - name: Inject tweaks into IPA
         run: |
           tweaks="ytplus.deb"
-
           for tweak in youpip ytuhd ryd ygs yq ytvo demc; do
             if [ -f "${tweak}.deb" ]; then
               tweaks="$tweaks ${tweak}.deb"
             fi
           done
-
           cyan -i youtube.ipa -o YouTubePlus_tvOS_${{ inputs.tweak_version }}.ipa -uwef $tweaks -n "${{ inputs.display_name }}" -b ${{ inputs.bundle_id }}
 
       - name: Upload to GitHub Releases
