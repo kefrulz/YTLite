@@ -112,16 +112,14 @@ jobs:
           path: ${{ github.workspace }}/theos
           submodules: recursive
 
-      - name: Download tvOS SDK
-        if: steps.theos.outputs.cache-hit != 'true'
-        run: |
-          git clone --quiet -n --depth=1 --filter=tree:0 https://github.com/theos/sdks/
-          cd sdks
-          git sparse-checkout set --no-cone AppleTVOS16.5.sdk
-          git checkout
-          mv *.sdk $THEOS/sdks
-        env:
-          THEOS: ${{ github.workspace }}/theos
+    - name: Download tvOS SDK
+          if: steps.theos.outputs.cache-hit != 'true'
+          run: |
+          curl -LO https://github.com/theos/sdks/releases/download/SDK-Release-1/AppleTVOS12.4.sdk.tar.xz
+          mkdir -p $THEOS/sdks
+          tar -xf AppleTVOS12.4.sdk.tar.xz -C $THEOS/sdks
+          env:
+           THEOS: ${{ github.workspace }}/theos
 
       - name: Install cyan
         run: pipx install --force https://github.com/asdfzxcvbn/pyzule-rw/archive/main.zip
