@@ -118,7 +118,7 @@ jobs:
           THEOS: ${{ github.workspace }}/theos
         run: |
           echo "Downloading SDK..."
-          wget --content-disposition https://github.com/theos/sdks/releases/download/SDK-Release-1/AppleTVOS12.4.sdk.tar.xz
+          wget --content-disposition https://github.com/theos/sdks/releases/download/master-146e41f/AppleTVOS12.4.sdk.tar.xz
 
           echo "Creating SDK directory: $THEOS/sdks"
           mkdir -p "$THEOS/sdks"
