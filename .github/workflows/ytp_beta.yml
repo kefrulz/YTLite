@@ -75,9 +75,6 @@ jobs:
           path: main
           submodules: recursive
 
-      - name: Hide sensitive inputs
-        uses: levibostian/action-hide-sensitive-inputs@v1
-
       - name: Validate IPA URL
         run: |
           curl -L -r 0-1023 -o sample.part "${{ inputs.ipa_url }}" > /dev/null 2>&1
@@ -117,78 +114,116 @@ jobs:
         env:
           THEOS: ${{ github.workspace }}/theos
         run: |
-          echo "Downloading SDK..."
           wget --content-disposition https://github.com/theos/sdks/releases/download/master-146e41f/AppleTVOS12.4.sdk.tar.xz
-
-          echo "Creating SDK directory: $THEOS/sdks"
           mkdir -p "$THEOS/sdks"
-
-          echo "Extracting SDK..."
           tar -xvf AppleTVOS12.4.sdk.tar.xz -C "$THEOS/sdks"
-
-          echo "Final SDK contents:"
-          ls -la "$THEOS/sdks"
 
       - name: Install cyan
         run: pipx install --force https://github.com/asdfzxcvbn/pyzule-rw/archive/main.zip
 
-      - name: Download YTLite
+      - name: Download YouTube Plus
         run: |
-          deb_url="https://github.com/dayanch96/YTLite/releases/download/v${{ inputs.tweak_version }}/com.dvntm.ytlite_${{ inputs.tweak_version }}_iphoneos-arm.deb"
-          wget "$deb_url" --no-verbose -O ytplus.deb
+          wget "https://github.com/dayanch96/YTLite/releases/download/v${{ inputs.tweak_version }}/com.dvntm.ytlite_${{ inputs.tweak_version }}_iphoneos-arm.deb" \
+            --no-verbose -O ${{ github.workspace }}/ytplus.deb
 
-      - name: Download YouTube tvOS IPA
-        run: wget "${{ inputs.ipa_url }}" --no-verbose -O youtube.ipa
-
-      - name: Clone and Build Optional Tweaks
-        env:
-          ENABLE_YOUPIP: ${{ inputs.enable_youpip }}
-          ENABLE_YTUHD: ${{ inputs.enable_ytuhd }}
-          ENABLE_RYD: ${{ inputs.enable_ryd }}
-          ENABLE_DEMC: ${{ inputs.enable_demc }}
-          ENABLE_YQ: ${{ inputs.enable_yq }}
+      - name: Download YouTube
         run: |
-          declare -A repos=(
-            [youpip]="https://github.com/PoomSmart/YouPiP.git"
-            [ytuhd]="https://github.com/PoomSmart/YTUHD.git"
-            [ryd]="https://github.com/PoomSmart/Return-YouTube-Dislikes.git"
-            [ygs]="https://github.com/PoomSmart/YouGroupSettings.git"
-            [yq]="https://github.com/PoomSmart/YouQuality.git"
-            [ytvo]="https://github.com/PoomSmart/YTVideoOverlay.git"
-            [demc]="https://github.com/therealFoxster/DontEatMyContent.git"
-          )
+          wget "${{ inputs.ipa_url }}" --no-verbose -O ${{ github.workspace }}/youtube.ipa
+
+      - name: Clone Open in YouTube (Safari extension)
+        run: |
+          git clone --quiet -n --depth=1 --filter=tree:0 https://github.com/CokePokes/YoutubeExtensions/
+          cd YoutubeExtensions
+          git sparse-checkout set --no-cone OpenYoutubeSafariExtension.appex
+          git checkout
+          mv *.appex ${{ github.workspace }} || true
+
+      - name: Clone YouTubeHeader
+        run: |
+          cd ${{ github.workspace }}/theos/include
+          if [ -d "YouTubeHeader" ]; then
+            cd YouTubeHeader && git pull
+          else
+            git clone --quiet --depth=1 https://github.com/PoomSmart/YouTubeHeader.git
+          fi
+
+      - name: Clone PSHeader
+        run: |
+          cd ${{ github.workspace }}/theos/include
+          if [ -d "PSHeader" ]; then
+            cd PSHeader && git pull
+          else
+            git clone --quiet --depth=1 https://github.com/PoomSmart/PSHeader.git
+          fi
+
+      # Clone and Build Each Tweak Conditionally
+      - name: Clone and Build Tweaks
+        run: |
+          set -e
+          cd ${{ github.workspace }}
 
           clone_and_build() {
-            local name=$1
-            local url=${repos[$name]}
-            echo "Cloning and building $name"
-            git clone --quiet --depth=1 --recurse-submodules "$url" "$name"
-            cd "$name"
-            make clean package DEBUG=0 FINALPACKAGE=1 || echo "⚠️ $name may not be tvOS compatible"
-            mv packages/*.deb ../${name}.deb || true
+            local repo=$1
+            local dir=$2
+            git clone --quiet --depth=1 $repo $dir
+            cd $dir
+            make clean package DEBUG=0 FINALPACKAGE=1 || echo "⚠️ Build failed for $dir"
+            mv packages/*.deb ../${dir}.deb || true
             cd ..
           }
 
-          [[ "$ENABLE_YOUPIP" == "true" ]] && clone_and_build "youpip"
-          [[ "$ENABLE_YTUHD" == "true" ]] && clone_and_build "ytuhd"
-          [[ "$ENABLE_RYD" == "true" ]] && clone_and_build "ryd"
-          [[ "$ENABLE_DEMC" == "true" ]] && clone_and_build "demc"
-          [[ "$ENABLE_YQ" == "true" ]] && clone_and_build "yq"
-          [[ "$ENABLE_YQ" == "true" ]] && clone_and_build "ytvo"
+          if [[ "${{ inputs.enable_youpip }}" == "true" ]]; then
+            clone_and_build https://github.com/PoomSmart/YouPiP.git YouPiP
+          fi
+
+          if [[ "${{ inputs.enable_ytuhd }}" == "true" ]]; then
+            clone_and_build https://github.com/PoomSmart/YTUHD.git YTUHD
+          fi
+
+          if [[ "${{ inputs.enable_ryd }}" == "true" ]]; then
+            clone_and_build https://github.com/PoomSmart/Return-YouTube-Dislikes.git Return-YouTube-Dislikes
+          fi
+
+          if [[ "${{ inputs.enable_yq }}" == "true" ]]; then
+            clone_and_build https://github.com/PoomSmart/YouQuality.git YouQuality
+            clone_and_build https://github.com/PoomSmart/YTVideoOverlay.git YTVideoOverlay
+          fi
+
+          if [[ "${{ inputs.enable_demc }}" == "true" ]]; then
+            clone_and_build https://github.com/PoomSmart/YouGroupSettings.git YouGroupSettings
+            clone_and_build https://github.com/therealFoxster/DontEatMyContent.git DontEatMyContent
+          fi
+        env:
+          THEOS: ${{ github.workspace }}/theos
 
       - name: Inject tweaks into IPA
         run: |
+          set -e
           tweaks="ytplus.deb"
-          for tweak in youpip ytuhd ryd ygs yq ytvo demc; do
-            if [ -f "${tweak}.deb" ]; then
-              tweaks="$tweaks ${tweak}.deb"
-            fi
+          [ -f "OpenYoutubeSafariExtension.appex" ] && tweaks="$tweaks OpenYoutubeSafariExtension.appex"
+
+          for deb in youpip ytuhd ryd ygs yq ytvo demc; do
+            [ -f "$deb.deb" ] && tweaks="$tweaks $deb.deb"
           done
-          cyan -i youtube.ipa -o YouTubePlus_tvOS_${{ inputs.tweak_version }}.ipa -uwef $tweaks -n "${{ inputs.display_name }}" -b ${{ inputs.bundle_id }}
+
+          if [ ! -f youtube.ipa ]; then
+            echo "::error::Missing youtube.ipa"
+            exit 1
+          fi
+
+          cyan -i youtube.ipa -o YouTubePlus_${{ inputs.tweak_version }}.ipa -uwef $tweaks \
+            -n "${{ inputs.display_name }}" -b "${{ inputs.bundle_id }}"
 
       - name: Upload to GitHub Releases
         uses: softprops/action-gh-release@v2
         with:
           name: YouTubePlus tvOS v${{ inputs.tweak_version }} (${{ github.run_number }})
-          files: YouTubePlus_tvOS_${{ inputs.tweak_version }}.ipa
+          files: YouTubePlus_${{ inputs.tweak_version }}.ipa
           draft: true
+
+      - name: Output Release URL
+        run: |
+          echo "::notice::Release available at: https://github.com/${{ github.repository }}/releases"
+
+      - name: Cleanup
+        run: rm -f *.deb *.appex *.tar.xz sample.part
