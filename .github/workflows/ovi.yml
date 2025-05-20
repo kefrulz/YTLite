@@ -102,7 +102,7 @@ jobs:
         id: theos
         uses: actions/cache@v4
         env:
-          cache-name: theos_cache_67db2ab
+          cache-name: theos_cache_67db2ajb
         with:
           path: theos/
           key: ${{ env.cache-name }}
@@ -149,10 +149,6 @@ jobs:
         env:
           THEOS: ${{ github.workspace }}/theos
 
-      - name: Clone YouPiP
-        if: ${{ inputs.enable_youpip }}
-        run: git clone --depth=1 https://github.com/PoomSmart/YouPiP.git
-
       - name: Clone YTUHD
         if: ${{ inputs.enable_ytuhd }}
         run: git clone --depth=1 https://github.com/PoomSmart/YTUHD.git
@@ -176,15 +172,6 @@ jobs:
       - name: Clone DontEatMyContent
         if: ${{ inputs.enable_demc }}
         run: git clone --depth=1 --recurse-submodules https://github.com/therealFoxster/DontEatMyContent.git
-
-      - name: Build YouPiP
-        if: ${{ inputs.enable_youpip }}
-        run: |
-          cd YouPiP
-          make clean package DEBUG=0 FINALPACKAGE=1 TARGET=appletvos
-          mv packages/*.deb ../youpip.deb
-        env:
-          THEOS: ${{ github.workspace }}/theos
 
       - name: Build YTUHD
         if: ${{ inputs.enable_ytuhd }}
@@ -243,7 +230,7 @@ jobs:
       - name: Inject tweaks into IPA
         run: |
           tweaks="ytplus.deb"
-          for deb in youpip.deb ytuhd.deb ryd.deb ygs.deb yq.deb ytvo.deb demc.deb; do
+          for deb in ytuhd.deb ryd.deb ygs.deb yq.deb ytvo.deb demc.deb; do
             if [ -f "$deb" ]; then
               tweaks="$tweaks $deb"
             fi
