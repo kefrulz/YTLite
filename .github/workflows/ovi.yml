@@ -1,4 +1,4 @@
-name: Create YouTube Plus appz
+name: Create YouTube Plus appssss
 
 on:
   workflow_dispatch:
@@ -35,7 +35,7 @@ on:
 
       ipa_url:
         description: "URL to the decrypted IPA file"
-        default: "https://files.catbox.moe/m5wrc1.tipa"
+        default: ""
         required: true
         type: string
 
@@ -69,7 +69,6 @@ concurrency:
 
 jobs:
   build:
-    name: 
     runs-on: macos-latest
     permissions:
       contents: write
@@ -88,7 +87,7 @@ jobs:
         run: |
           curl -L -r 0-1023 -o sample.part "${{ inputs.ipa_url }}" > /dev/null 2>&1
           file_type=$(file --mime-type -b sample.part)
-          if [[ "$file_type" != "application/x-ios-app" && "$file_type" != "application/zip" ]]; then
+          if [[ "$file_type" != "application/x-ios-app" && "$file_type" != "application/zip" && "$file_type" != "application/octet-stream" ]]; then
             echo "::error::Validation failed: The file is not a valid IPA file. Detected type: $file_type."
             exit 1
           fi
@@ -121,8 +120,8 @@ jobs:
       - name: Download tvOS SDK
         if: steps.theos.outputs.cache-hit != 'true'
         run: |
-          wget --content-disposition https://github.com/theos/sdks/releases/download/master-146e41f/AppleTVOS12.4.sdk.tar.xz
           mkdir -p $THEOS/sdks
+          curl -L https://github.com/theos/sdks/releases/download/master-146e41f/AppleTVOS12.4.sdk.tar.xz -o AppleTVOS12.4.sdk.tar.xz
           tar -xf AppleTVOS12.4.sdk.tar.xz -C $THEOS/sdks
         env:
           THEOS: ${{ github.workspace }}/theos
@@ -131,145 +130,113 @@ jobs:
         run: pipx install --force https://github.com/asdfzxcvbn/pyzule-rw/archive/main.zip
 
       - name: Download YouTube Plus
-        id: download_ytp
-        run: |
-          deb_url="https://github.com/dayanch96/YTLite/releases/download/v${{ inputs.tweak_version }}/com.dvntm.ytlite_${{ inputs.tweak_version }}_iphoneos-arm.deb"
-          wget "$deb_url" --no-verbose -O ${{ github.workspace }}/ytplus.deb
+        run: wget "https://github.com/dayanch96/YTLite/releases/download/v${{ inputs.tweak_version }}/com.dvntm.ytlite_${{ inputs.tweak_version }}_iphoneos-arm.deb" -O ytplus.deb
 
       - name: Download YouTube
-        id: download_youtube
-        run: wget "${{ inputs.ipa_url }}" --no-verbose -O ${{ github.workspace }}/youtube.ipa
+        run: wget "${{ inputs.ipa_url }}" -O youtube.ipa
 
       - name: Clone YouTubeHeader
         run: |
-          if [ -d "$THEOS/include/YouTubeHeader" ]; then
-            echo "YouTubeHeader exists. Pulling latest changes..."
-            cd $THEOS/include/YouTubeHeader
-            git pull
-          else
-            echo "YouTubeHeader does not exist. Cloning repository..."
-            cd $THEOS/include
-            git clone --quiet --depth=1 https://github.com/PoomSmart/YouTubeHeader.git
-          fi
+          if [ -d "$THEOS/include/YouTubeHeader" ]; then cd $THEOS/include/YouTubeHeader && git pull
+          else cd $THEOS/include && git clone --depth=1 https://github.com/PoomSmart/YouTubeHeader.git; fi
         env:
           THEOS: ${{ github.workspace }}/theos
 
       - name: Clone PSHeader
         run: |
-          if [ -d "$THEOS/include/PSHeader" ]; then
-            echo "PSHeader exists. Pulling latest changes..."
-            cd $THEOS/include/PSHeader
-            git pull
-          else
-            echo "PSHeader does not exist. Cloning repository..."
-            cd $THEOS/include
-            git clone --quiet --depth=1 https://github.com/PoomSmart/PSHeader.git
-          fi
+          if [ -d "$THEOS/include/PSHeader" ]; then cd $THEOS/include/PSHeader && git pull
+          else cd $THEOS/include && git clone --depth=1 https://github.com/PoomSmart/PSHeader.git; fi
         env:
           THEOS: ${{ github.workspace }}/theos
 
       - name: Clone YouPiP
         if: ${{ inputs.enable_youpip }}
-        run: |
-          cd ${{ github.workspace }}
-          git clone --quiet --depth=1 https://github.com/PoomSmart/YouPiP.git
+        run: git clone --depth=1 https://github.com/PoomSmart/YouPiP.git
 
       - name: Clone YTUHD
         if: ${{ inputs.enable_ytuhd }}
-        run: |
-          cd ${{ github.workspace }}
-          git clone --quiet --depth=1 https://github.com/PoomSmart/YTUHD.git
+        run: git clone --depth=1 https://github.com/PoomSmart/YTUHD.git
 
       - name: Clone Return-YouTube-Dislikes
         if: ${{ inputs.enable_ryd }}
-        run: |
-          cd ${{ github.workspace }}
-          git clone --quiet --depth=1 https://github.com/PoomSmart/Return-YouTube-Dislikes.git
+        run: git clone --depth=1 https://github.com/PoomSmart/Return-YouTube-Dislikes.git
 
       - name: Clone YouGroupSettings
         if: ${{ inputs.enable_demc }}
-        run: |
-          cd ${{ github.workspace }}
-          git clone --quiet --depth=1 https://github.com/PoomSmart/YouGroupSettings.git
+        run: git clone --depth=1 https://github.com/PoomSmart/YouGroupSettings.git
 
       - name: Clone YouQuality
         if: ${{ inputs.enable_yq }}
-        run: |
-          cd ${{ github.workspace }}
-          git clone --quiet --depth=1 https://github.com/PoomSmart/YouQuality.git
+        run: git clone --depth=1 https://github.com/PoomSmart/YouQuality.git
 
       - name: Clone YTVideoOverlay
         if: ${{ inputs.enable_yq }}
-        run: |
-          cd ${{ github.workspace }}
-          git clone --quiet --depth=1 https://github.com/PoomSmart/YTVideoOverlay.git
+        run: git clone --depth=1 https://github.com/PoomSmart/YTVideoOverlay.git
 
       - name: Clone DontEatMyContent
         if: ${{ inputs.enable_demc }}
-        run: |
-          cd ${{ github.workspace }}
-          git clone --quiet --depth=1 --recurse-submodules https://github.com/therealFoxster/DontEatMyContent.git
+        run: git clone --depth=1 --recurse-submodules https://github.com/therealFoxster/DontEatMyContent.git
 
       - name: Build YouPiP
         if: ${{ inputs.enable_youpip }}
         run: |
-          cd ${{ github.workspace }}/YouPiP
-          make clean package DEBUG=0 FINALPACKAGE=1
-          mv packages/*.deb ${{ github.workspace }}/youpip.deb
+          cd YouPiP
+          make clean package DEBUG=0 FINALPACKAGE=1 TARGET=appletvos
+          mv packages/*.deb ../youpip.deb
         env:
           THEOS: ${{ github.workspace }}/theos
 
       - name: Build YTUHD
         if: ${{ inputs.enable_ytuhd }}
         run: |
-          cd ${{ github.workspace }}/YTUHD
-          make clean package DEBUG=0 FINALPACKAGE=1
-          mv packages/*.deb ${{ github.workspace }}/ytuhd.deb
+          cd YTUHD
+          make clean package DEBUG=0 FINALPACKAGE=1 TARGET=appletvos
+          mv packages/*.deb ../ytuhd.deb
         env:
           THEOS: ${{ github.workspace }}/theos
 
       - name: Build Return-YouTube-Dislikes
         if: ${{ inputs.enable_ryd }}
         run: |
-          cd ${{ github.workspace }}/Return-YouTube-Dislikes
-          make clean package DEBUG=0 FINALPACKAGE=1
-          mv packages/*.deb ${{ github.workspace }}/ryd.deb
+          cd Return-YouTube-Dislikes
+          make clean package DEBUG=0 FINALPACKAGE=1 TARGET=appletvos
+          mv packages/*.deb ../ryd.deb
         env:
           THEOS: ${{ github.workspace }}/theos
 
       - name: Build YouGroupSettings
         if: ${{ inputs.enable_demc }}
         run: |
-          cd ${{ github.workspace }}/YouGroupSettings
-          make clean package DEBUG=0 FINALPACKAGE=1
-          mv packages/*.deb ${{ github.workspace }}/ygs.deb
+          cd YouGroupSettings
+          make clean package DEBUG=0 FINALPACKAGE=1 TARGET=appletvos
+          mv packages/*.deb ../ygs.deb
         env:
           THEOS: ${{ github.workspace }}/theos
 
       - name: Build YouQuality
         if: ${{ inputs.enable_yq }}
         run: |
-          cd ${{ github.workspace }}/YouQuality
-          make clean package DEBUG=0 FINALPACKAGE=1
-          mv packages/*.deb ${{ github.workspace }}/yq.deb
+          cd YouQuality
+          make clean package DEBUG=0 FINALPACKAGE=1 TARGET=appletvos
+          mv packages/*.deb ../yq.deb
         env:
           THEOS: ${{ github.workspace }}/theos
 
       - name: Build YTVideoOverlay
         if: ${{ inputs.enable_yq }}
         run: |
-          cd ${{ github.workspace }}/YTVideoOverlay
-          make clean package DEBUG=0 FINALPACKAGE=1
-          mv packages/*.deb ${{ github.workspace }}/ytvo.deb
+          cd YTVideoOverlay
+          make clean package DEBUG=0 FINALPACKAGE=1 TARGET=appletvos
+          mv packages/*.deb ../ytvo.deb
         env:
           THEOS: ${{ github.workspace }}/theos
 
       - name: Build DontEatMyContent
         if: ${{ inputs.enable_demc }}
         run: |
-          cd ${{ github.workspace }}/DontEatMyContent
-          make clean package DEBUG=0 FINALPACKAGE=1
-          mv packages/*.deb ${{ github.workspace }}/demc.deb
+          cd DontEatMyContent
+          make clean package DEBUG=0 FINALPACKAGE=1 TARGET=appletvos
+          mv packages/*.deb ../demc.deb
         env:
           THEOS: ${{ github.workspace }}/theos
 
@@ -281,15 +248,14 @@ jobs:
               tweaks="$tweaks $deb"
             fi
           done
-          cyan -i youtube.ipa -o YouTubePlus_${{ inputs.tweak_version }}.ipa -uwef $tweaks -n "${{ inputs.display_name }}" -b ${{ inputs.bundle_id }}
+          cyan -i youtube.ipa -o YouTubePlus_${{ inputs.tweak_version }}.tipa -uwef $tweaks -n "${{ inputs.display_name }}" -b ${{ inputs.bundle_id }}
 
       - name: Upload to GitHub Releases
         uses: softprops/action-gh-release@v2.0.1
         with:
           name: YouTubePlus v${{ inputs.tweak_version }} (${{ github.run_number }})
-          files: YouTubePlus_${{ inputs.tweak_version }}.ipa
+          files: YouTubePlus_${{ inputs.tweak_version }}.tipa
           draft: true
 
       - name: Output Release URL
-        run: |
-          echo "::notice::Release available at: https://github.com/${{ github.repository }}/releases"
+        run: echo "::notice::Release available at: https://github.com/${{ github.repository }}/releases"
