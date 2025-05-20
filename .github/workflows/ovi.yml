@@ -15,7 +15,7 @@ on:
         required: true
         default: false
 
-      enable_ryd:
+      enable_ryd:xa
         description: "Integrate Return YouTube Dislikes"
         type: boolean
         required: true
@@ -112,14 +112,14 @@ jobs:
           path: ${{ github.workspace }}/theos
           submodules: recursive
 
-    - name: Download tvOS SDK
-          if: steps.theos.outputs.cache-hit != 'true'
-          run: |
+      - name: Download tvOS SDK
+        if: steps.theos.outputs.cache-hit != 'true'
+        run: |
           curl -LO https://github.com/theos/sdks/releases/download/SDK-Release-1/AppleTVOS12.4.sdk.tar.xz
           mkdir -p $THEOS/sdks
           tar -xf AppleTVOS12.4.sdk.tar.xz -C $THEOS/sdks
-          env:
-           THEOS: ${{ github.workspace }}/theos
+        env:
+          THEOS: ${{ github.workspace }}/theos
 
       - name: Install cyan
         run: pipx install --force https://github.com/asdfzxcvbn/pyzule-rw/archive/main.zip
@@ -184,3 +184,6 @@ jobs:
           name: YouTubePlus tvOS v${{ inputs.tweak_version }} (${{ github.run_number }})
           files: YouTubePlus_tvOS_${{ inputs.tweak_version }}.ipa
           draft: true
+
+      - name: Output Release URL
+        run: echo "::notice::Release available at: https://github.com/${{ github.repository }}/releases"
