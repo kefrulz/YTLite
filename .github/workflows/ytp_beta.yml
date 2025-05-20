@@ -70,7 +70,7 @@ jobs:
 
     steps:
       - name: Checkout Main
-        uses: actions/checkout@v4.1.1
+        uses: actions/checkout@v4
         with:
           path: main
           submodules: recursive
@@ -82,14 +82,13 @@ jobs:
         run: |
           curl -L -r 0-1023 -o sample.part "${{ inputs.ipa_url }}" > /dev/null 2>&1
           file_type=$(file --mime-type -b sample.part)
-
           if [[ "$file_type" != "application/x-ios-app" && "$file_type" != "application/zip" ]]; then
             echo "::error::Validation failed: The file is not a valid IPA file. Detected type: $file_type."
             exit 1
           fi
 
       - name: Install Dependencies
-        run: brew install make ldid
+        run: brew install make ldid wget
 
       - name: Set PATH
         run: echo "$(brew --prefix make)/libexec/gnubin" >> $GITHUB_PATH
@@ -106,23 +105,29 @@ jobs:
 
       - name: Setup Theos
         if: steps.theos.outputs.cache-hit != 'true'
-        uses: actions/checkout@v4.1.7
+        uses: actions/checkout@v4
         with:
           repository: theos/theos
           ref: 67db2ab8d950910161730de77c322658ea3e6b44
           path: ${{ github.workspace }}/theos
           submodules: recursive
 
-      - name: Download tvOS SDK
+      - name: Download and extract AppleTVOS12.4.sdk
         if: steps.theos.outputs.cache-hit != 'true'
-        run: |
-          git clone --quiet -n --depth=1 --filter=tree:0 https://github.com/theos/sdks/
-          cd sdks
-          git sparse-checkout set --no-cone AppleTVOS16.5.sdk
-          git checkout
-          mv *.sdk $THEOS/sdks
         env:
           THEOS: ${{ github.workspace }}/theos
+        run: |
+          echo "Downloading SDK..."
+          wget --content-disposition https://github.com/theos/sdks/releases/download/master-146e41f/AppleTVOS12.4.sdk.tar.xz
+
+          echo "Creating SDK directory: $THEOS/sdks"
+          mkdir -p "$THEOS/sdks"
+
+          echo "Extracting SDK..."
+          tar -xvf AppleTVOS12.4.sdk.tar.xz -C "$THEOS/sdks"
+
+          echo "Final SDK contents:"
+          ls -la "$THEOS/sdks"
 
       - name: Install cyan
         run: pipx install --force https://github.com/asdfzxcvbn/pyzule-rw/archive/main.zip
@@ -136,6 +141,12 @@ jobs:
         run: wget "${{ inputs.ipa_url }}" --no-verbose -O youtube.ipa
 
       - name: Clone and Build Optional Tweaks
+        env:
+          ENABLE_YOUPIP: ${{ inputs.enable_youpip }}
+          ENABLE_YTUHD: ${{ inputs.enable_ytuhd }}
+          ENABLE_RYD: ${{ inputs.enable_ryd }}
+          ENABLE_DEMC: ${{ inputs.enable_demc }}
+          ENABLE_YQ: ${{ inputs.enable_yq }}
         run: |
           declare -A repos=(
             [youpip]="https://github.com/PoomSmart/YouPiP.git"
@@ -147,34 +158,40 @@ jobs:
             [demc]="https://github.com/therealFoxster/DontEatMyContent.git"
           )
 
-          for tweak in youpip ytuhd ryd ygs yq ytvo demc; do
-            if [[ "${{ inputs.enable_${tweak} }}" == "true" ]]; then
-              echo "Cloning and building $tweak"
-              git clone --quiet --depth=1 --recurse-submodules "${repos[$tweak]}" "$tweak"
-              cd "$tweak"
-              make clean package DEBUG=0 FINALPACKAGE=1 || echo "⚠️ $tweak may not be tvOS compatible"
-              mv packages/*.deb ../${tweak}.deb || true
-              cd ..
-            fi
-          done
-        env:
-          THEOS: ${{ github.workspace }}/theos
+          clone_and_build() {
+            local name=$1
+            local url=${repos[$name]}
+            echo "Cloning and building $name"
+            git clone --quiet --depth=1 --recurse-submodules "$url" "$name"
+            cd "$name"
+            make clean package DEBUG=0 FINALPACKAGE=1 || echo "⚠️ $name may not be tvOS compatible"
+            mv packages/*.deb ../${name}.deb || true
+            cd ..
+          }
+
+          [[ "$ENABLE_YOUPIP" == "true" ]] && clone_and_build "youpip"
+          [[ "$ENABLE_YTUHD" == "true" ]] && clone_and_build "ytuhd"
+          [[ "$ENABLE_RYD" == "true" ]] && clone_and_build "ryd"
+          [[ "$ENABLE_DEMC" == "true" ]] && clone_and_build "demc"
+          [[ "$ENABLE_YQ" == "true" ]] && clone_and_build "yq"
+          [[ "$ENABLE_YQ" == "true" ]] && clone_and_build "ytvo"
 
       - name: Inject tweaks into IPA
         run: |
           tweaks="ytplus.deb"
-
           for tweak in youpip ytuhd ryd ygs yq ytvo demc; do
             if [ -f "${tweak}.deb" ]; then
               tweaks="$tweaks ${tweak}.deb"
             fi
           done
-
           cyan -i youtube.ipa -o YouTubePlus_tvOS_${{ inputs.tweak_version }}.ipa -uwef $tweaks -n "${{ inputs.display_name }}" -b ${{ inputs.bundle_id }}
 
       - name: Upload to GitHub Releases
-        uses: softprops/action-gh-release@v2.0.1
+        uses: softprops/action-gh-release@v2
         with:
           name: YouTubePlus tvOS v${{ inputs.tweak_version }} (${{ github.run_number }})
           files: YouTubePlus_tvOS_${{ inputs.tweak_version }}.ipa
           draft: true
+
+      - name: Output Release URL
+        run: echo "::notice::Release available at: https://github.com/${{ github.repository }}/releases"
