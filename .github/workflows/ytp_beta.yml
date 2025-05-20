@@ -130,14 +130,6 @@ jobs:
         run: |
           wget "${{ inputs.ipa_url }}" --no-verbose -O ${{ github.workspace }}/youtube.ipa
 
-      - name: Clone Open in YouTube (Safari extension)
-        run: |
-          git clone --quiet -n --depth=1 --filter=tree:0 https://github.com/CokePokes/YoutubeExtensions/
-          cd YoutubeExtensions
-          git sparse-checkout set --no-cone OpenYoutubeSafariExtension.appex
-          git checkout
-          mv *.appex ${{ github.workspace }} || true
-
       - name: Clone YouTubeHeader
         run: |
           cd ${{ github.workspace }}/theos/include
@@ -156,7 +148,6 @@ jobs:
             git clone --quiet --depth=1 https://github.com/PoomSmart/PSHeader.git
           fi
 
-      # Clone and Build Each Tweak Conditionally
       - name: Clone and Build Tweaks
         run: |
           set -e
@@ -200,8 +191,6 @@ jobs:
         run: |
           set -e
           tweaks="ytplus.deb"
-          [ -f "OpenYoutubeSafariExtension.appex" ] && tweaks="$tweaks OpenYoutubeSafariExtension.appex"
-
           for deb in youpip ytuhd ryd ygs yq ytvo demc; do
             [ -f "$deb.deb" ] && tweaks="$tweaks $deb.deb"
           done
@@ -226,4 +215,4 @@ jobs:
           echo "::notice::Release available at: https://github.com/${{ github.repository }}/releases"
 
       - name: Cleanup
-        run: rm -f *.deb *.appex *.tar.xz sample.part
+        run: rm -f *.deb *.tar.xz sample.part
