@@ -135,6 +135,12 @@ jobs:
         run: wget "${{ inputs.ipa_url }}" --no-verbose -O youtube.ipa
 
       - name: Clone and Build Optional Tweaks
+        env:
+          ENABLE_YOUPIP: ${{ inputs.enable_youpip }}
+          ENABLE_YTUHD: ${{ inputs.enable_ytuhd }}
+          ENABLE_RYD: ${{ inputs.enable_ryd }}
+          ENABLE_DEMC: ${{ inputs.enable_demc }}
+          ENABLE_YQ: ${{ inputs.enable_yq }}
         run: |
           declare -A repos=(
             [youpip]="https://github.com/PoomSmart/YouPiP.git"
@@ -157,14 +163,12 @@ jobs:
             cd ..
           }
 
-          [[ "${{ inputs.enable_youpip }}" == "true" ]] && clone_and_build "youpip"
-          [[ "${{ inputs.enable_ytuhd }}" == "true" ]] && clone_and_build "ytuhd"
-          [[ "${{ inputs.enable_ryd }}" == "true" ]] && clone_and_build "ryd"
-          [[ "${{ inputs.enable_demc }}" == "true" ]] && clone_and_build "demc"
-          [[ "${{ inputs.enable_yq }}" == "true" ]] && clone_and_build "yq"
-          [[ "${{ inputs.enable_yq }}" == "true" ]] && clone_and_build "ytvo"
-        env:
-          THEOS: ${{ github.workspace }}/theos
+          [[ "$ENABLE_YOUPIP" == "true" ]] && clone_and_build "youpip"
+          [[ "$ENABLE_YTUHD" == "true" ]] && clone_and_build "ytuhd"
+          [[ "$ENABLE_RYD" == "true" ]] && clone_and_build "ryd"
+          [[ "$ENABLE_DEMC" == "true" ]] && clone_and_build "demc"
+          [[ "$ENABLE_YQ" == "true" ]] && clone_and_build "yq"
+          [[ "$ENABLE_YQ" == "true" ]] && clone_and_build "ytvo"
 
       - name: Inject tweaks into IPA
         run: |
