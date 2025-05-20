@@ -256,6 +256,3 @@ jobs:
           name: YouTubePlus v${{ inputs.tweak_version }} (${{ github.run_number }})
           files: YouTubePlus_${{ inputs.tweak_version }}.tipa
           draft: true
-
-      - name: Output Release URL
-        run: echo "::notice::Release available at: https://github.com/${{ github.repository }}/releases"
